@@ -1,0 +1,2 @@
+Parser ddf (IAR EWARM device description file format)
+Generates peripheral C-style structure with pointers to peripheral registers
