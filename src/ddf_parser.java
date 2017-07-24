@@ -11,6 +11,8 @@ import  java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -31,6 +33,9 @@ class ddf_parser{
     	Path headinputPath = Paths.get(args[0]);
     	Path headerPath = Paths.get(args[1]);
     	Path sourcePath = Paths.get(args[2]);
+    	
+    	DateFormat dateFormat = new SimpleDateFormat("yyyy.MM.dd HH:mm:ss");
+    	String date = dateFormat.format(new Date());
     	
     	/*!********************************************************************
     	 * Чтение файла
@@ -58,25 +63,47 @@ class ddf_parser{
     		if(fileContent.get(i).indexOf("sfr = ") != -1) {
     			List<String> found = new ArrayList<String>();
     			
+    			//sfr name
     			Pattern pattern = Pattern.compile("=\\ \\\"([\\w \\(\\)]+)\\\"");
     	    	Matcher matcher = pattern.matcher(fileContent.get(i));
     	    	if(matcher.find()) {	//Найден регистр
+    	    		Register r = new Register();
     	    		found.add(matcher.group(1));
-    	    		
+    	    		//Address, Bytesize
     	    		pattern = Pattern.compile("\\b[0-9]([a-fxA-F0-9 \\(\\)]+){0,}");
     	    		matcher = pattern.matcher(fileContent.get(i));
     	    		while (matcher.find()) {
         	            found.add(matcher.group());
         	        }
-    	    		
-    	    		Register r = new Register();
     	    		//Заполняем свойства регистра
     	    		r.name = found.get(0);
     	    		r.address = found.get(1);
     	    		r.bytesize = found.get(2);
+    	    		
     	    		//Добавляем регистр в словарь
     	    		registers.put(r.name, r);
     	    	}
+    	    	
+	    		//sfr bit field
+	    		List<String> foundbit = new ArrayList<String>();
+	    		pattern = Pattern.compile("([\\w.\\(\\)]+)[.]");
+	    		matcher = pattern.matcher(fileContent.get(i));
+	    		if(matcher.find()) {
+	    			String periph = matcher.group(1);
+		    		pattern = Pattern.compile("[.]([\\w.\\(\\)]+)\\\"");
+		    		matcher = pattern.matcher(fileContent.get(i));
+		    		if (matcher.find()) {
+		    			foundbit.add(matcher.group(1));
+		    			//Bitrange
+	    	    		pattern = Pattern.compile("\\b[0-9]([a-fxA-F0-9 \\(\\)]+){0,}");
+	    	    		matcher = pattern.matcher(fileContent.get(i));
+	    	    		while (matcher.find()) {
+	        	            foundbit.add(matcher.group());
+	        	        }
+		    			
+	    	    		registers.get(periph).addBitField(foundbit.get(0), foundbit.get(4), foundbit.get(5));
+	    	        }
+	    		}
     		}
     	}
     	System.out.println("Done");
@@ -109,10 +136,8 @@ class ddf_parser{
     	headerContent.add("/*!****************************************************************************\r\n" + 
     			" * @file		" + headerPath.getFileName().toString() + "\r\n" + 
     			" * @author		generated ddfparser\r\n" + 
-    			" * @version		V1.0\r\n" + 
-    			" * @date		\r\n" + 
+    			" * @date		" + date + "\r\n" + 
     			" * @copyright	GNU Lesser General Public License v3\r\n" + 
-    			" * @brief		--\r\n" + 
     			" */\r\n" + 
     			"#ifndef tmsPeriph_H\r\n" + 
     			"#define tmsPeriph_H\r\n" + 
@@ -120,16 +145,32 @@ class ddf_parser{
     	
     	headerContent.add("typedef struct{");
     		for(int i = 0; i < peripherals.peripherals.size(); i++) {
-    			headerContent.add("    struct{");
+    			headerContent.add("\t" + "struct{");
     			for(int j = 0; j < peripherals.peripherals.get(i).registers.size(); j++) {
-    				headerContent.add("        " 
-    								+ "const "
+    				headerContent.add("\t\t" + "union{");
+    				headerContent.add("\t\t\t"
     								+ peripherals.peripherals.get(i).registers.get(j).type
-    								+ "\t*"
-    								+ peripherals.peripherals.get(i).registers.get(j).name 
+    								+ "\t"
+    								+ "all" 
     								+ ";");
+    				
+    				if(peripherals.peripherals.get(i).registers.get(j).bitField.size() > 0) {
+    					headerContent.add("\t\t\t" + "struct{");
+    					for(int k = 0; k < peripherals.peripherals.get(i).registers.get(j).bitField.size(); k++) {
+            				headerContent.add("\t\t\t\t"
+            								+ peripherals.peripherals.get(i).registers.get(j).type
+            								+ "\t"
+            								+ peripherals.peripherals.get(i).registers.get(j).bitField.get(k).name
+            								+ "\t:"
+            								+ peripherals.peripherals.get(i).registers.get(j).bitField.get(k).bits
+            								+ ";");
+            			}
+    					headerContent.add("\t\t\t" + "}bit;");
+    				}
+    				
+    				headerContent.add("\t\t}*" + peripherals.peripherals.get(i).registers.get(j).name + ";");
     			}
-    			headerContent.add("    }" + peripherals.peripherals.get(i).formattedName + ";");
+    			headerContent.add("\t" + "}" + peripherals.peripherals.get(i).formattedName + ";");
 				if(i < peripherals.peripherals.size() - 1) {
 					headerContent.add("");
 				}
@@ -137,10 +178,10 @@ class ddf_parser{
     	headerContent.add("}tmsPeriphPointers_type;");
     	headerContent.add(	"\r\n" +
     						"extern const tmsPeriphPointers_type tmsPeripheral;\r\n" +
+    						"\r\n" +
     						"#endif //tmsPeriph_H\r\n" + 
     						"/*************** LGPL ************** END OF FILE *********** D_EL ************/\r\n" + 
-    						"\r\n" + 
-    						"");	
+    						"\r\n");	
     	System.out.println("Done");
     	
     	/*!********************************************************************
@@ -150,10 +191,8 @@ class ddf_parser{
     	sourceContent.add("/*!****************************************************************************\r\n" + 
     			" * @file		" + sourcePath.getFileName().toString() + "\r\n" + 
     			" * @author		generated ddfparser\r\n" + 
-    			" * @version		V1.0\r\n" + 
-    			" * @date		\r\n" + 
+    			" * @date		" + date + "\r\n" + 
     			" * @copyright	GNU Lesser General Public License v3\r\n" + 
-    			" * @brief		--\r\n" + 
     			" */\r\n" +
     			"#include \"stdio.h\"\r\n" +
     			"#include " + "\"" + headerPath.getFileName().toString() + "\"" +
@@ -161,7 +200,6 @@ class ddf_parser{
     			);
     	sourceContent.add("const tmsPeriphPointers_type tmsPeripheral = {");
     	for(int i = 0; i < peripherals.peripherals.size(); i++) {
-			//headerContent.add("    struct{");
 			for(int j = 0; j < peripherals.peripherals.get(i).registers.size(); j++) {
 				sourceContent.add("\t\t" 
 								+ "."
@@ -172,7 +210,6 @@ class ddf_parser{
 								+ peripherals.peripherals.get(i).registers.get(j).address
 								+ ",");
 			}
-			//headerContent.add("    }" + peripherals.peripherals.get(i).formattedName + ";");
 			if(i < peripherals.peripherals.size()) {
 				sourceContent.add("");
 			}
@@ -180,8 +217,7 @@ class ddf_parser{
     	sourceContent.add("};");
     	sourceContent.add(	"\r\n" +
 				"/*************** LGPL ************** END OF FILE *********** D_EL ************/\r\n" + 
-				"\r\n" + 
-				"");
+				"\r\n");
     	System.out.println("Done");
     	
     	/*!********************************************************************
@@ -206,18 +242,51 @@ class ddf_parser{
     	/*!********************************************************************
     	 * Вывод в консоль
     	 */
-    	/*for (int j = 0; j < headerContent.size(); j++) {
+    	for (int j = 0; j < headerContent.size(); j++) {
     		System.out.println(headerContent.get(j));
-    	}*/
+    	}
     }
 }
 
+class BitField{
+	public String name;
+	public String positionStart;
+	public String positionEnd;
+	public String bits;
+}
+
 class Register{
+	List<BitField> bitField = new ArrayList<BitField>();
 	public String name;
 	public String address;
 	public String bytesize;
 	public String chmod;
 	public String type;
+	private int currentBitPosition;
+	
+	public Register() {
+		currentBitPosition = 0;
+	}
+	
+	public void addBitField(String name, String positionStart, String positionEnd) {
+		int bitPosition = Integer.parseInt(positionStart);
+		if(bitPosition > (currentBitPosition + 1)) {
+			BitField breserv = new BitField();
+			breserv.name = "reserv" + Integer.toString(currentBitPosition);
+			breserv.bits = Integer.toString(bitPosition - currentBitPosition);
+			bitField.add(breserv);
+		}
+		
+		BitField b = new BitField();
+		b.name = name;
+		b.positionStart = positionStart;
+		b.positionEnd = positionEnd;
+		int numbits = Integer.parseInt(b.positionEnd) - Integer.parseInt(b.positionStart) + 1;
+		b.bits = Integer.toString(numbits);
+		
+		currentBitPosition = bitPosition + numbits;
+		bitField.add(b);
+	}
 }
 
 class Peripheral{
