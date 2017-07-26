@@ -23,20 +23,30 @@ class ddf_parser{
     	List<String> sourceContent = new ArrayList<String>();
     	Peripherals peripherals = new Peripherals();
     	Map<String, Register> registers = new HashMap<String, Register>();
-    	
-    	if(args.length < 3) {
-    		System.out.println(	"Error!\r\n" + 
-    							"ddfparser input_ddf output_h output_c\r\n" + 
-    							"");
-			return;
-    	}
-    	Path headinputPath = Paths.get(args[0]);
-    	Path headerPath = Paths.get(args[1]);
-    	Path sourcePath = Paths.get(args[2]);
-    	
     	DateFormat dateFormat = new SimpleDateFormat("yyyy.MM.dd HH:mm:ss");
     	String date = dateFormat.format(new Date());
     	
+    	if(args.length < 4){
+    		System.out.println(	"Error!\r\n" + 
+    							"ddfparser be/le input_ddf output_h output_c\r\n" + 
+    							"");
+			return;
+    	}
+    	
+    	String smode = args[0];
+    	Path headinputPath = Paths.get(args[1]);
+    	Path headerPath = Paths.get(args[2]);
+    	Path sourcePath = Paths.get(args[3]);
+    	
+    	Boolean isBigEndian = true;
+    	if(smode.equals("be")) {
+    		System.out.println("Mode: BigEndian");
+    		isBigEndian = true;
+    	}else if(smode.equals("le")) {
+    		System.out.println("Mode: LittleEndian");
+    		isBigEndian = false;
+    	}
+
     	/*!********************************************************************
     	 * Чтение файла
     	 */
@@ -45,7 +55,7 @@ class ddf_parser{
 			return;
 		}
     	System.out.print("Read file... ");
-    	BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(args[0])));
+    	BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(headinputPath.toString())));
     	List<String> fileContent = new ArrayList<String>();
     	String str;
     	while( (str = br.readLine() ) != null ) {	//читаем все строки
@@ -137,12 +147,15 @@ class ddf_parser{
     			" * @file		" + headerPath.getFileName().toString() + "\r\n" + 
     			" * @author		generated ddfparser\r\n" + 
     			" * @date		" + date + "\r\n" + 
+    			" * @bief		mode: " + smode + "\r\n" + 
     			" * @copyright	GNU Lesser General Public License v3\r\n" + 
     			" */\r\n" + 
     			"#ifndef tmsPeriph_H\r\n" + 
     			"#define tmsPeriph_H\r\n" + 
     			" ");
     	
+    	headerContent.add("#include \"stdio.h\"");
+    	headerContent.add("");
     	headerContent.add("typedef struct{");
     		for(int i = 0; i < peripherals.peripherals.size(); i++) {
     			headerContent.add("\t" + "struct{");
@@ -154,17 +167,46 @@ class ddf_parser{
     								+ "all" 
     								+ ";");
     				
+    				//Bit fields
     				if(peripherals.peripherals.get(i).registers.get(j).bitField.size() > 0) {
     					headerContent.add("\t\t\t" + "struct{");
-    					for(int k = 0; k < peripherals.peripherals.get(i).registers.get(j).bitField.size(); k++) {
-            				headerContent.add("\t\t\t\t"
-            								+ peripherals.peripherals.get(i).registers.get(j).type
-            								+ "\t"
-            								+ peripherals.peripherals.get(i).registers.get(j).bitField.get(k).name
-            								+ "\t:"
-            								+ peripherals.peripherals.get(i).registers.get(j).bitField.get(k).bits
-            								+ ";");
-            			}
+    					//LittleEndian
+    					if(isBigEndian == false) {
+	    					for(int k = 0; k < peripherals.peripherals.get(i).registers.get(j).bitField.size(); k++) {
+	            				headerContent.add("\t\t\t\t"
+	            								+ peripherals.peripherals.get(i).registers.get(j).type
+	            								+ "\t"
+	            								+ peripherals.peripherals.get(i).registers.get(j).bitField.get(k).name
+	            								+ "\t:"
+	            								+ peripherals.peripherals.get(i).registers.get(j).bitField.get(k).bits
+	            								+ ";");
+	            			}
+	    				//BigEndian
+    					}else {
+    						
+    						if(peripherals.peripherals.get(i).registers.get(j).ibitsize >
+									peripherals.peripherals.get(i).registers.get(j).currentBitPosition) {
+    							//headerContent.add(	"\t\t\t\t" + "7777777777777777777777777");
+	    						headerContent.add(	"\t\t\t\t" +
+	    											peripherals.peripherals.get(i).registers.get(j).type +
+	    											"\t" +
+	    											"reserv" + Integer.toString(peripherals.peripherals.get(i).registers.get(j).currentBitPosition) +
+	    											"\t:" +
+	    											Integer.toString(	peripherals.peripherals.get(i).registers.get(j).ibitsize -
+	    																peripherals.peripherals.get(i).registers.get(j).currentBitPosition) +
+	    											";");
+    						
+    						}
+    						for(int k = peripherals.peripherals.get(i).registers.get(j).bitField.size(); k >= 1 ; k--) {
+	            				headerContent.add("\t\t\t\t"
+	            								+ peripherals.peripherals.get(i).registers.get(j).type
+	            								+ "\t"
+	            								+ peripherals.peripherals.get(i).registers.get(j).bitField.get(k - 1).name
+	            								+ "\t:"
+	            								+ peripherals.peripherals.get(i).registers.get(j).bitField.get(k - 1).bits
+	            								+ ";");
+	            			}
+    					}
     					headerContent.add("\t\t\t" + "}bit;");
     				}
     				
@@ -192,9 +234,10 @@ class ddf_parser{
     			" * @file		" + sourcePath.getFileName().toString() + "\r\n" + 
     			" * @author		generated ddfparser\r\n" + 
     			" * @date		" + date + "\r\n" + 
+    			" * @bief		mode: " + smode + "\r\n" + 
     			" * @copyright	GNU Lesser General Public License v3\r\n" + 
-    			" */\r\n" +
-    			"#include \"stdio.h\"\r\n" +
+    			" */" +
+    			"\r\n" +
     			"#include " + "\"" + headerPath.getFileName().toString() + "\"" +
     			"\r\n"
     			);
@@ -257,12 +300,14 @@ class BitField{
 
 class Register{
 	List<BitField> bitField = new ArrayList<BitField>();
-	public String name;
-	public String address;
-	public String bytesize;
-	public String chmod;
-	public String type;
-	private int currentBitPosition;
+	public String 	name;
+	public String 	address;
+	public String 	bytesize;
+	public int 		ibytesize;
+	public int 		ibitsize;
+	public String 	chmod;
+	public String 	type;
+	public int 		currentBitPosition;
 	
 	public Register() {
 		currentBitPosition = 0;
@@ -312,15 +357,23 @@ class Peripherals{
 		switch(register.bytesize) {
 			case "1": 
 				register.type = "uint8_t";
+				register.ibytesize = 1;
+				register.ibitsize = 8;
 				break;
 			case "2": 
 				register.type = "uint16_t";
+				register.ibytesize = 2;
+				register.ibitsize = 16;
 				break;
 			case "4": 
 				register.type = "uint32_t";
+				register.ibytesize = 4;
+				register.ibitsize = 32;
 				break;
 			default: 
 				register.type = "uint32_t";
+				register.ibytesize = -1;
+				register.ibitsize = -1;
 		}
 		p.registers.add(register);
 	}
