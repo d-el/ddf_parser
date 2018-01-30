@@ -67,7 +67,7 @@ class ddf_parser{
 		/*!********************************************************************
 		 * Парсинг
 		 */
-		///Парсим sfr
+		//Парсим sfr
 		System.out.print("Parse sfr... ");
 		for(int i = 0; i < fileContent.size(); i++) {
 			if(fileContent.get(i).indexOf("sfr = ") != -1) {
@@ -118,7 +118,7 @@ class ddf_parser{
 		}
 		System.out.println("Done");
 		
-		///Парсим группы
+		//Парсим группы
 		System.out.print("Parse group... ");
 		for(int i = 0; i < fileContent.size(); i++) {
 			if(fileContent.get(i).indexOf("group = ") != -1) {
