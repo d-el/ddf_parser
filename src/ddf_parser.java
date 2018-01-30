@@ -1,4 +1,4 @@
-/*!****************************************************************************
+п»ї/*!****************************************************************************
  * @file		ddf_prser.java
  * @author		Storozhenko Roman
  * @version		V1.0
@@ -48,9 +48,9 @@ class ddf_parser{
     	}
 
     	/*!********************************************************************
-    	 * Чтение файла
+    	 * Р§С‚РµРЅРёРµ С„Р°Р№Р»Р°
     	 */
-    	if(Files.notExists(headinputPath)) {	//Проверяем что файл существует
+    	if(Files.notExists(headinputPath)) {	//РџСЂРѕРІРµСЂСЏРµРј С‡С‚Рѕ С„Р°Р№Р» СЃСѓС‰РµСЃС‚РІСѓРµС‚
 			System.out.println("Input file is not exist!");
 			return;
 		}
@@ -58,16 +58,16 @@ class ddf_parser{
     	BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(headinputPath.toString())));
     	List<String> fileContent = new ArrayList<String>();
     	String str;
-    	while( (str = br.readLine() ) != null ) {	//читаем все строки
+    	while( (str = br.readLine() ) != null ) {	//С‡РёС‚Р°РµРј РІСЃРµ СЃС‚СЂРѕРєРё
     		fileContent.add(str);
     	}
     	br.close();
     	System.out.println("Done");
     	
     	/*!********************************************************************
-    	 * Парсинг
+    	 * РџР°СЂСЃРёРЅРі
     	 */
-    	///Парсим sfr
+    	///РџР°СЂСЃРёРј sfr
     	System.out.print("Parse sfr... ");
     	for(int i = 0; i < fileContent.size(); i++) {
     		if(fileContent.get(i).indexOf("sfr = ") != -1) {
@@ -76,7 +76,7 @@ class ddf_parser{
     			//sfr name
     			Pattern pattern = Pattern.compile("=\\ \\\"([\\w \\(\\)]+)\\\"");
     	    	Matcher matcher = pattern.matcher(fileContent.get(i));
-    	    	if(matcher.find()) {	//Найден регистр
+    	    	if(matcher.find()) {	//РќР°Р№РґРµРЅ СЂРµРіРёСЃС‚СЂ
     	    		Register r = new Register();
     	    		found.add(matcher.group(1));
     	    		//Address, Bytesize
@@ -85,12 +85,12 @@ class ddf_parser{
     	    		while (matcher.find()) {
         	            found.add(matcher.group());
         	        }
-    	    		//Заполняем свойства регистра
+    	    		//Р—Р°РїРѕР»РЅСЏРµРј СЃРІРѕР№СЃС‚РІР° СЂРµРіРёСЃС‚СЂР°
     	    		r.name = found.get(0);
     	    		r.address = found.get(1);
     	    		r.bytesize = found.get(2);
     	    		
-    	    		//Добавляем регистр в словарь
+    	    		//Р”РѕР±Р°РІР»СЏРµРј СЂРµРіРёСЃС‚СЂ РІ СЃР»РѕРІР°СЂСЊ
     	    		registers.put(r.name, r);
     	    	}
     	    	
@@ -118,7 +118,7 @@ class ddf_parser{
     	}
     	System.out.println("Done");
     	
-    	///Парсим группы
+    	///РџР°СЂСЃРёРј РіСЂСѓРїРїС‹
     	System.out.print("Parse group... ");
     	for(int i = 0; i < fileContent.size(); i++) {
     		if(fileContent.get(i).indexOf("group = ") != -1) {
@@ -140,7 +140,7 @@ class ddf_parser{
     	System.out.println("Done");
     	
     	/*!********************************************************************
-    	 * Генерация хедер файла
+    	 * Р“РµРЅРµСЂР°С†РёСЏ С…РµРґРµСЂ С„Р°Р№Р»Р°
     	 */
     	System.out.print("Generate header file... ");
     	headerContent.add("/*!****************************************************************************\r\n" + 
@@ -227,7 +227,7 @@ class ddf_parser{
     	System.out.println("Done");
     	
     	/*!********************************************************************
-    	 * Генерация с файла
+    	 * Р“РµРЅРµСЂР°С†РёСЏ СЃ С„Р°Р№Р»Р°
     	 */
     	System.out.print("Generate source file... ");
     	sourceContent.add("/*!****************************************************************************\r\n" + 
@@ -264,7 +264,7 @@ class ddf_parser{
     	System.out.println("Done");
     	
     	/*!********************************************************************
-    	 * Вывод в файлы
+    	 * Р’С‹РІРѕРґ РІ С„Р°Р№Р»С‹
     	 */
     	System.out.print("Save out files... ");
 		BufferedWriter bhw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(headerPath.toString())));
@@ -283,7 +283,7 @@ class ddf_parser{
 		System.out.println("Done");
     	
     	/*!********************************************************************
-    	 * Вывод в консоль
+    	 * Р’С‹РІРѕРґ РІ РєРѕРЅСЃРѕР»СЊ
     	 */
     	for (int j = 0; j < headerContent.size(); j++) {
     		System.out.println(headerContent.get(j));
